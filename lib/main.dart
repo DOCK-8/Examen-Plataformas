@@ -44,11 +44,10 @@ const List<Producto> catalogoProductos = [
 class PedidoNotifier extends Notifier<List<Producto>> {
   @override
   List<Producto> build() {
-    // La lista inicial debe estar vacía
     return const [];
   }
 
-  /// Agrega un producto al pedido creando una nueva lista inmutable
+  /// Agrega un producto al pedido creando una nueva lista
   void agregarProducto(Producto producto) {
     state = [...state, producto];
   }
@@ -63,7 +62,7 @@ final pedidoProvider = NotifierProvider<PedidoNotifier, List<Producto>>(
   PedidoNotifier.new,
 );
 
-// Proveedores derivados para un rendimiento óptimo
+// Proveedores derivados sencillos
 final totalArticulosProvider = Provider<int>((ref) {
   final pedido = ref.watch(pedidoProvider);
   return pedido.length;
@@ -79,7 +78,6 @@ final totalImporteProvider = Provider<double>((ref) {
 // ==========================================
 void main() {
   runApp(
-    // ProviderScope es obligatorio en la raíz para Riverpod
     const ProviderScope(
       child: CafeteriaApp(),
     ),
@@ -92,14 +90,12 @@ class CafeteriaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Cafetería - Pedido',
+      title: 'Pedido de Cafetería',
       debugShowCheckedModeBanner: false,
+      // Estilo estándar y limpio por defecto de Android (Material)
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6F4E37), // Tono café
-          brightness: Brightness.light,
-        ),
         useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
       ),
       home: const CafeteriaScreen(),
     );
@@ -114,189 +110,145 @@ class CafeteriaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Requisito 4: ref.watch() para cantidad de artículos e importe total
+    // Requisito 4: ref.watch() para lista, cantidad e importe
+    final pedido = ref.watch(pedidoProvider);
     final totalArticulos = ref.watch(totalArticulosProvider);
     final totalImporte = ref.watch(totalImporteProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Pedido de Cafetería',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        backgroundColor: colorScheme.primaryContainer,
-        foregroundColor: colorScheme.onPrimaryContainer,
+        title: const Text('Pedido de Cafetería'),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Sección de Catálogo
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                itemCount: catalogoProductos.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final producto = catalogoProductos[index];
-                  return Card(
-                    elevation: 1.5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
-                            foregroundColor: colorScheme.primary,
-                            child: Icon(_getIconForProduct(producto.nombre)),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  producto.nombre,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'S/ ${producto.precio.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Requisito 3: Botón Agregar que suma 1 unidad
-                          FilledButton.icon(
-                            key: Key('btn_agregar_${producto.id}'),
-                            onPressed: () {
-                              ref
-                                  .read(pedidoProvider.notifier)
-                                  .agregarProducto(producto);
-                            },
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Agregar'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Título del catálogo
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              'Catálogo de Productos',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          // Requisito 3: Lista simple con ListTile estándar de Android
+          ...catalogoProductos.map(
+            (producto) => ListTile(
+              title: Text(producto.nombre),
+              subtitle: Text('S/ ${producto.precio.toStringAsFixed(2)}'),
+              trailing: ElevatedButton(
+                key: Key('btn_agregar_${producto.id}'),
+                onPressed: () {
+                  ref.read(pedidoProvider.notifier).agregarProducto(producto);
                 },
+                child: const Text('Agregar'),
               ),
             ),
+          ),
 
-            // Resumen del pedido y botón Vaciar
-            Container(
-              padding: const EdgeInsets.all(20.0),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, -3),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Métricas: Artículos e Importe Total
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Cantidad de artículos',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$totalArticulos',
-                            key: const Key('total_articulos_text'),
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Importe total',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'S/ ${totalImporte.toStringAsFixed(2)}',
-                            key: const Key('total_importe_text'),
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+          const Divider(),
 
-                  // Requisito 5: Botón Vaciar pedido
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      key: const Key('btn_vaciar_pedido'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red.shade700,
-                        side: BorderSide(color: Colors.red.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+          // Sección de productos agregados al pedido
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              'Artículos en el Pedido',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          Expanded(
+            child: pedido.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No hay productos en el pedido',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: pedido.length,
+                    itemBuilder: (context, index) {
+                      final item = pedido[index];
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 12,
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                         ),
-                      ),
-                      onPressed: totalArticulos > 0
-                          ? () {
-                              ref.read(pedidoProvider.notifier).vaciarPedido();
-                            }
-                          : null,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text(
-                        'Vaciar pedido',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        title: Text(item.nombre),
+                        trailing: Text(
+                          'S/ ${item.precio.toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+
+          const Divider(height: 1),
+
+          // Resumen y botón vaciar
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            color: Colors.grey.shade100,
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Cantidad de artículos:',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                    Text(
+                      '$totalArticulos',
+                      key: const Key('total_articulos_text'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Importe total:',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                    Text(
+                      'S/ ${totalImporte.toStringAsFixed(2)}',
+                      key: const Key('total_importe_text'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    key: const Key('btn_vaciar_pedido'),
+                    onPressed: totalArticulos > 0
+                        ? () {
+                            ref.read(pedidoProvider.notifier).vaciarPedido();
+                          }
+                        : null,
+                    child: const Text('Vaciar pedido'),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-
-  IconData _getIconForProduct(String nombre) {
-    if (nombre.toLowerCase().contains('café')) return Icons.coffee;
-    if (nombre.toLowerCase().contains('sándwich')) return Icons.lunch_dining;
-    if (nombre.toLowerCase().contains('jugo')) return Icons.local_drink;
-    return Icons.fastfood;
   }
 }
